@@ -310,4 +310,3 @@ class EvaluatorAgent(BaseAgent):
         ):
             self.hallucination_detector.close()
         super().close()
-

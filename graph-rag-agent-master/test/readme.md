@@ -15,10 +15,8 @@ Test 模块提供了对多种智能代理 (Agent) 的测试接口，支持流式
 ### 支持的 Agent 类型
 
 1. **DeepResearchAgent**：深度研究代理，能够进行深入分析并展示思考过程
-2. **NaiveRagAgent**：基础检索增强生成代理
-3. **GraphAgent**：基于知识图谱的代理
-4. **HybridAgent**：混合型代理，结合多种策略
-5. **FusionGraphRAGAgent**：融合图谱和检索增强的代理
+2. **EvaluatorAgent**：幻觉评估 Agent 实现
+3. **RetrievalAgent**：核心检索 Agent 实现（支持多种策略）
 
 ### 两种测试模式
 
