@@ -9,12 +9,13 @@ def display_knowledge_graph_tab(tabs):
         st.markdown('<div class="kg-controls">', unsafe_allow_html=True)
 
         # 检查当前agent类型
-        if st.session_state.agent_type == "naive_rag_agent":
-            st.info("Naive RAG 是传统的向量搜索方式，没有知识图谱的可视化。")
-            return
-        elif st.session_state.agent_type == "deep_research_agent":
+        if st.session_state.agent_type == "deep_research_agent":
             st.info("Deep Research Agent 专注于深度推理过程，没有知识图谱的可视化。请查看执行轨迹标签页了解详细推理过程。")
             return
+        elif st.session_state.agent_type == "evaluator_agent":
+            st.info("Evaluator Agent 用于检测幻觉和评估回答质量，支持知识图谱可视化来验证信息准确性。")
+        elif st.session_state.agent_type == "retrieval_agent":
+            st.info("Retrieval Agent 使用混合搜索方式，支持知识图谱可视化来展示实体关系和检索路径。")
         elif st.session_state.agent_type == "fusion_agent":
             st.info("Fusion Agent 使用多种知识图谱技术进行融合分析。查看图谱可以了解实体间的关联和社区结构。")
         
@@ -47,6 +48,9 @@ def display_knowledge_graph_tab(tabs):
                 if "current_kg_message" in st.session_state and st.session_state.current_kg_message is not None:
                     msg_idx = st.session_state.current_kg_message
                     
+                    # 添加调试信息
+                    st.info(f"尝试显示消息索引 {msg_idx} 的知识图谱")
+                    
                     # 安全地检查索引是否有效以及kg_data是否存在
                     if (0 <= msg_idx < len(st.session_state.messages) and 
                         "kg_data" in st.session_state.messages[msg_idx] and 
@@ -55,20 +59,88 @@ def display_knowledge_graph_tab(tabs):
                         
                         # 获取相关回答的消息内容前20个字符用于显示
                         msg_preview = st.session_state.messages[msg_idx]["content"][:20] + "..."
-                        st.success(f"显示与回答「{msg_preview}」相关的知识图谱")
+                        kg_data = st.session_state.messages[msg_idx]["kg_data"]
+                        
+                        st.success(f"✅ 显示与回答「{msg_preview}」相关的知识图谱")
+                        st.info(f"📊 图谱包含 {len(kg_data.get('nodes', []))} 个节点，{len(kg_data.get('edges', []))} 条边")
                         
                         # 显示图谱
-                        visualize_knowledge_graph(st.session_state.messages[msg_idx]["kg_data"])
+                        visualize_knowledge_graph(kg_data)
                     else:
-                        st.info("未找到与当前回答相关的知识图谱数据")
-                        # 如果没有相关图谱数据，显示提示
-                        st.warning("尝试加载全局知识图谱...")
+                        # 详细的错误诊断
+                        st.warning("⚠️ 未找到与当前回答相关的知识图谱数据")
+                        
+                        # 显示详细的诊断信息
+                        with st.expander("🔍 详细诊断信息", expanded=True):
+                            if msg_idx is None:
+                                st.error("current_kg_message 为 None")
+                            elif msg_idx < 0 or msg_idx >= len(st.session_state.messages):
+                                st.error(f"消息索引 {msg_idx} 超出范围（总消息数：{len(st.session_state.messages)}）")
+                            elif "kg_data" not in st.session_state.messages[msg_idx]:
+                                st.error(f"消息 {msg_idx} 中没有 kg_data 字段")
+                            elif st.session_state.messages[msg_idx]["kg_data"] is None:
+                                st.error(f"消息 {msg_idx} 的 kg_data 为 None")
+                            elif len(st.session_state.messages[msg_idx]["kg_data"].get("nodes", [])) == 0:
+                                st.error(f"消息 {msg_idx} 的知识图谱没有节点")
+                            
+                            # 显示如何提取知识图谱的提示
+                            st.markdown("### 💡 如何获取知识图谱？")
+                            st.markdown("1. 确保已启用**调试模式**")
+                            st.markdown("2. 选择 **retrieval_agent** 或 **evaluator_agent**")
+                            st.markdown("3. 发送问题获得AI回答")
+                            st.markdown("4. 点击回答下方的 **\"提取知识图谱\"** 按钮")
+                        
+                        # 如果没有相关图谱数据，显示提示并尝试加载全局图谱
+                        st.info("🔄 尝试加载全局知识图谱作为备选...")
                         with st.spinner("加载全局知识图谱..."):
-                            kg_data = get_knowledge_graph(limit=100)
+                            kg_data = get_knowledge_graph(limit=50)  # 减少数量，加快加载
                             if kg_data and len(kg_data.get("nodes", [])) > 0:
+                                st.success(f"✅ 已加载全局知识图谱（{len(kg_data.get('nodes', []))} 个节点）")
                                 visualize_knowledge_graph(kg_data)
+                            else:
+                                st.error("❌ 无法加载全局知识图谱")
                 else:
-                    st.info("在调试模式下发送查询获取相关的知识图谱")
+                    st.info("💡 在调试模式下发送查询并点击\"提取知识图谱\"获取相关的知识图谱")
+                    
+                    # 显示操作指南
+                    with st.expander("📋 操作指南", expanded=True):
+                        st.markdown("""
+                        ### 如何查看知识图谱？
+                        
+                        1. **启用调试模式**：在左侧边栏勾选"启用调试模式"
+                        2. **选择合适的Agent**：选择 "retrieval_agent" 或 "evaluator_agent"
+                        3. **发送问题**：在聊天框中输入您的问题
+                        4. **提取知识图谱**：等待AI回答后，点击回答下方的"提取知识图谱"按钮
+                        5. **查看图谱**：系统会自动切换到此知识图谱标签页显示结果
+                        
+                        ### 当前状态检查
+                        """)
+                        
+                        # 状态检查
+                        debug_enabled = st.session_state.get("debug_mode", False)
+                        agent_type = st.session_state.get("agent_type", "unknown")
+                        message_count = len(st.session_state.get("messages", []))
+                        
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            if debug_enabled:
+                                st.success("✅ 调试模式已启用")
+                            else:
+                                st.error("❌ 调试模式未启用")
+                        
+                        with col2:
+                            if agent_type in ["retrieval_agent", "evaluator_agent"]:
+                                st.success(f"✅ Agent类型: {agent_type}")
+                            elif agent_type == "deep_research_agent":
+                                st.warning("⚠️ Deep Research Agent 不支持知识图谱")
+                            else:
+                                st.info(f"ℹ️ Agent类型: {agent_type}")
+                        
+                        with col3:
+                            if message_count > 0:
+                                st.success(f"✅ 已有 {message_count} 条消息")
+                            else:
+                                st.info("ℹ️ 暂无对话消息")
             else:
                 # 全局知识图谱
                 with st.spinner("加载全局知识图谱..."):

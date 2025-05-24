@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import streamlit as st
 
 from utils.state import init_session_state
@@ -24,6 +28,14 @@ def main():
     
     # 添加自定义CSS
     custom_css()
+    
+    # 根据调试模式状态添加CSS类标识
+    debug_css_class = "debug-mode" if st.session_state.debug_mode else "normal-mode"
+    st.markdown(f"""
+    <script>
+        document.querySelector('[data-testid="stAppViewContainer"]').className += ' {debug_css_class}';
+    </script>
+    """, unsafe_allow_html=True)
     
     # 显示侧边栏
     display_sidebar()

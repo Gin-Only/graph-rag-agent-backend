@@ -60,3 +60,11 @@ def init_session_state():
             'vector_search_results': {},  # 向量搜索结果缓存
             'api_responses': {},  # API响应缓存
         }
+    
+    # 历史对话记录管理
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []  # 存储历史对话会话
+    if 'current_chat_title' not in st.session_state:
+        st.session_state.current_chat_title = None
+    if 'show_history' not in st.session_state:
+        st.session_state.show_history = False  # 是否展开历史记录面板

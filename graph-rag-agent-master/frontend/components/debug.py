@@ -28,7 +28,7 @@ def display_execution_trace_tab(tabs):
         if st.session_state.agent_type == "deep_research_agent":
             # 创建一个标题，使用黑色
             st.markdown("""
-            <div style="padding:10px 0px; margin:15px 0; border-bottom:1px solid #eee;">
+            <div style="padding:10px 0px; margin:15px 0;">
                 <h2 style="margin:0; color:#333333;">深度研究执行过程</h2>
             </div>
             """, unsafe_allow_html=True)
@@ -415,7 +415,32 @@ def add_performance_tab(tabs):
 
 def display_debug_panel():
     """显示调试面板"""
-    st.subheader("🔍 调试信息")
+    # 使用简单的容器标记，不进行复杂的DOM操作
+    st.markdown('<div class="debug-panel-wrapper">', unsafe_allow_html=True)
+    
+    st.subheader("�� 可解释性")
+    
+    # 添加快速导航提示
+    if st.session_state.agent_type != "deep_research_agent":
+        # 检查是否有知识图谱数据
+        has_kg_data = False
+        if "current_kg_message" in st.session_state and st.session_state.current_kg_message is not None:
+            msg_idx = st.session_state.current_kg_message
+            if (0 <= msg_idx < len(st.session_state.messages) and 
+                "kg_data" in st.session_state.messages[msg_idx] and 
+                st.session_state.messages[msg_idx]["kg_data"] is not None):
+                has_kg_data = True
+        
+        if has_kg_data:
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.success("✅ 检测到知识图谱数据！")
+            with col2:
+                if st.button("📊 查看图谱", key="quick_view_kg"):
+                    st.session_state.current_tab = "知识图谱"
+                    st.rerun()
+        else:
+            st.info("💡 AI回答后点击\"提取知识图谱\"按钮可在此查看图谱可视化")
     
     # 创建标签页用于不同类型的调试信息
     tabs = st.tabs(["执行轨迹", "知识图谱", "源内容", "知识图谱管理", "性能监控"])
@@ -481,3 +506,143 @@ def display_debug_panel():
     # 只有当需要切换标签时才注入JS
     if "current_tab" in st.session_state:
         st.markdown(tab_js, unsafe_allow_html=True)
+    
+    # 关闭容器div
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # 添加强制固定定位的JavaScript
+    st.markdown("""
+    <script>
+        console.log("调试面板JavaScript开始执行");
+        
+        // 强制固定调试面板的函数
+        function forceFixDebugPanel() {
+            console.log("正在尝试固定调试面板...");
+            
+            // 查找调试面板容器
+            const debugWrapper = document.querySelector('.debug-panel-wrapper');
+            console.log("找到调试面板容器:", debugWrapper);
+            
+            if (debugWrapper) {
+                // 查找最近的列容器
+                let columnContainer = debugWrapper.closest('[data-testid="column"]');
+                console.log("找到列容器:", columnContainer);
+                
+                if (columnContainer) {
+                    console.log("应用固定定位样式...");
+                    
+                    // 强制设置固定定位样式，使用cssText一次性设置所有样式
+                    columnContainer.style.cssText = `
+                        position: fixed !important;
+                        top: 80px !important;
+                        right: 20px !important;
+                        width: 400px !important;
+                        max-width: 35vw !important;
+                        height: calc(100vh - 100px) !important;
+                        z-index: 9999 !important;
+                        background: white !important;
+                        border-radius: 10px !important;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.25) !important;
+                        border: 2px solid #e0e0e0 !important;
+                        overflow: hidden !important;
+                        transform: none !important;
+                    `;
+                    
+                    // 设置内部内容的滚动
+                    const innerContent = columnContainer.querySelector('div');
+                    if (innerContent) {
+                        innerContent.style.cssText = `
+                            height: 100% !important;
+                            overflow-y: auto !important;
+                            padding: 20px !important;
+                            box-sizing: border-box !important;
+                        `;
+                    }
+                    
+                    // 调整主内容区域的边距
+                    const mainContainer = document.querySelector('.main .block-container');
+                    if (mainContainer) {
+                        mainContainer.style.marginRight = '420px';
+                        console.log("已调整主内容边距");
+                    }
+                    
+                    // 调整聊天输入框的宽度
+                    const chatInput = document.querySelector('[data-testid="stChatInput"]');
+                    if (chatInput) {
+                        // 计算新的宽度：100% - 左侧边栏(320px) - 调试面板(420px)
+                        const newWidth = 'calc(100% - 740px)';
+                        chatInput.style.width = newWidth;
+                        chatInput.style.left = '320px';
+                        console.log("已调整聊天输入框宽度:", newWidth);
+                    }
+                    
+                    console.log("调试面板固定定位设置完成！");
+                    return true;
+                }
+            }
+            
+            console.log("未找到调试面板元素，重试...");
+            return false;
+        }
+        
+        // 重试机制
+        let retryCount = 0;
+        const maxRetries = 10;
+        
+        function tryFixDebugPanel() {
+            if (forceFixDebugPanel() || retryCount >= maxRetries) {
+                if (retryCount >= maxRetries) {
+                    console.log("达到最大重试次数，停止尝试");
+                }
+                return;
+            }
+            
+            retryCount++;
+            console.log(`重试 ${retryCount}/${maxRetries}`);
+            setTimeout(tryFixDebugPanel, 500);
+        }
+        
+        // 立即尝试执行
+        setTimeout(tryFixDebugPanel, 100);
+        
+        // 页面加载完成后再次尝试
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(tryFixDebugPanel, 500);
+            });
+        }
+        
+        // 监听DOM变化，当Streamlit重新渲染时重新应用
+        const observer = new MutationObserver(function(mutations) {
+            let shouldReapply = false;
+            
+            mutations.forEach(function(mutation) {
+                // 检查是否有新的节点添加，且包含调试面板
+                if (mutation.type === 'childList') {
+                    for (let node of mutation.addedNodes) {
+                        if (node.nodeType === 1) { // Element node
+                            if (node.querySelector && node.querySelector('.debug-panel-wrapper')) {
+                                shouldReapply = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            if (shouldReapply) {
+                console.log("检测到DOM变化，重新应用固定定位");
+                retryCount = 0;
+                setTimeout(tryFixDebugPanel, 300);
+            }
+        });
+        
+        // 开始观察整个文档的变化
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        console.log("调试面板JavaScript设置完成");
+    </script>
+    """, unsafe_allow_html=True)

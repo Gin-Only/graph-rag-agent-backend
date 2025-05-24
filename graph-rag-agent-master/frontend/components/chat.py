@@ -23,53 +23,61 @@ def display_chat_interface():
         col1, col2, col3 = st.columns([3, 1, 1])
         
         with col1:
-            # 添加重置锁的功能到 selectbox 的 on_change 参数
-            previous_agent = st.session_state.agent_type
-            agent_type = st.selectbox(
+            agent_options = ["retrieval_agent", "deep_research_agent", "evaluator_agent"]
+
+            def main_page_agent_changed():
+                # Agent变化的回调函数，同步状态并重置锁
+                st.session_state.agent_type = st.session_state.agent_type_main
+                reset_processing_lock()
+
+            try:
+                current_agent_index = agent_options.index(st.session_state.agent_type)
+            except ValueError:
+                current_agent_index = 0 # Default to the first option
+
+            st.selectbox(
                 "选择 Agent 类型",
-                options=["retrieval_agent",  "deep_research_agent", "evaluator_agent"],
-                key="header_agent_type",
+                options=agent_options,
+                index=current_agent_index,
+                key="agent_type_main", # 使用不同的key避免与侧边栏冲突
                 help="选择不同的Agent以体验不同的检索策略",
-                index=0 if st.session_state.agent_type == "retrieval_agent" 
-                        else (1 if st.session_state.agent_type == "deep_research_agent" 
-                             else (2 if st.session_state.agent_type == "evaluator_agent" 
-                                  else 3)),
-            
-                on_change=reset_processing_lock
+                on_change=main_page_agent_changed
             )
-            
-            # 检查是否切换了agent类型
-            if previous_agent != agent_type:
-                # 切换agent类型时重置锁
-                st.session_state.processing_lock = False
-                
-            st.session_state.agent_type = agent_type
-            
+
             # 添加思考过程切换 - 仅当选择 deep_research_agent 时显示
-            if agent_type == "deep_research_agent":
+            if st.session_state.agent_type == "deep_research_agent":
+                def show_thinking_changed():
+                    st.session_state.show_thinking = st.session_state.show_thinking_main
+                    reset_processing_lock()
+                
                 show_thinking = st.checkbox("显示推理过程", 
                           value=st.session_state.get("show_thinking", False),
-                          key="header_show_thinking",
+                          key="show_thinking_main",  # 使用不同的key避免与侧边栏冲突
                           help="显示AI的思考过程",
-                          on_change=reset_processing_lock)
-                st.session_state.show_thinking = show_thinking
+                          on_change=show_thinking_changed)
+
+                def use_deeper_changed():
+                    st.session_state.use_deeper_tool = st.session_state.use_deeper_tool_main
+                    reset_processing_lock()
 
                 use_deeper = st.checkbox("使用增强版研究工具", 
                                         value=st.session_state.get("use_deeper_tool", True),
-                                        key="header_use_deeper",
+                                        key="use_deeper_tool_main",  # 使用不同的key避免与侧边栏冲突
                                         help="启用社区感知和知识图谱增强",
-                                        on_change=reset_processing_lock)
-                st.session_state.use_deeper_tool = use_deeper
+                                        on_change=use_deeper_changed)
     
         with col2:
             # 添加流式响应选项 - 仅当调试模式未启用时显示
             if not st.session_state.debug_mode:
+                def use_stream_changed():
+                    st.session_state.use_stream = st.session_state.use_stream_main
+                    reset_processing_lock()
+                
                 use_stream = st.checkbox("使用流式响应", 
                                         value=st.session_state.get("use_stream", True),
-                                        key="header_use_stream",
+                                        key="use_stream_main",  # 使用不同的key避免与侧边栏冲突
                                         help="启用流式响应，实时显示生成结果",
-                                        on_change=reset_processing_lock)
-                st.session_state.use_stream = use_stream
+                                        on_change=use_stream_changed)
             else:
                 # 在调试模式下自动禁用流式响应
                 st.session_state.use_stream = False
@@ -81,6 +89,17 @@ def display_chat_interface():
     
     # 分隔线
     st.markdown("---")
+    
+    # 添加知识图谱状态提示
+    if st.session_state.debug_mode:
+        if st.session_state.agent_type == "deep_research_agent":
+            st.info("🔬 当前使用 Deep Research Agent，专注于推理过程，不支持知识图谱提取")
+        elif st.session_state.agent_type in ["retrieval_agent", "evaluator_agent"]:
+            st.success(f"🎯 知识图谱功能已启用！使用 {st.session_state.agent_type}，AI回答后可点击\"提取知识图谱\"按钮")
+        else:
+            st.info(f"📊 当前Agent: {st.session_state.agent_type}，支持知识图谱功能")
+    else:
+        st.warning("🔧 启用调试模式以使用知识图谱功能")
     
     # 如果当前有正在处理的请求，显示警告
     if st.session_state.processing_lock:
@@ -306,13 +325,27 @@ def display_chat_interface():
                                         
                                     # 使用用户查询来过滤知识图谱
                                     kg_data = get_knowledge_graph_from_message(msg["content"], user_query)
+                                    
+                                    # 添加调试信息
+                                    st.info(f"正在为消息索引 {i} 提取知识图谱...")
+                                    
                                     if kg_data and len(kg_data.get("nodes", [])) > 0:
                                         # 确保当前消息有正确的kg_data
                                         st.session_state.messages[i]["kg_data"] = kg_data
                                         # 更新当前的图谱消息索引为当前处理的消息索引
                                         st.session_state.current_kg_message = i
                                         st.session_state.current_tab = "知识图谱"  # 自动切换到知识图谱标签
+                                        
+                                        # 添加成功信息
+                                        st.success(f"知识图谱提取成功！找到 {len(kg_data.get('nodes', []))} 个节点，{len(kg_data.get('edges', []))} 条边")
+                                        st.success("已自动切换到调试面板的知识图谱标签页")
+                                        
                                         st.rerun()
+                                    else:
+                                        st.warning("未能提取到有效的知识图谱数据，可能的原因：")
+                                        st.markdown("- 回答中没有包含足够的实体信息")
+                                        st.markdown("- 后端知识图谱服务不可用")
+                                        st.markdown("- 数据库中没有相关的图谱数据")
         
         # 处理新消息
         if prompt := st.chat_input("请输入您的问题...", key="chat_input"):

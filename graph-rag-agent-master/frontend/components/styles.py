@@ -5,8 +5,8 @@ def custom_css():
     st.markdown("""
     <style>
     .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+        padding-top: 0rem;
+        /* padding-bottom: 2rem; */ /* Temporarily remove default, will be replaced by specific padding for chat input */
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 2px;
@@ -31,19 +31,34 @@ def custom_css():
         border-radius: 10px;
         background-color: white;
         padding: 10px;
-        height: calc(100vh - 250px);
+        height: auto;
+        min-height: 75vh;
         overflow-y: auto;
-        margin-bottom: 10px;
+        margin-bottom: 10px; 
         box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
     }
+    
+    /* 简化的调试容器样式 */
     .debug-container {
         border-radius: 10px;
         background-color: white;
-        height: calc(100vh - 120px);
         overflow-y: auto;
         padding: 10px;
-        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
+        border: 1px solid #e0e0e0;
+        height: calc(100vh - 150px); /* 设置合理的高度 */
+        max-height: calc(100vh - 150px);
     }
+    
+    /* 调试面板包装器 - 简单的固定定位方案 */
+    .debug-panel-wrapper {
+        /* 基础样式，通过JavaScript动态应用固定定位 */
+        background-color: white;
+        border-radius: 10px;
+        box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2);
+        border: 1px solid #e0e0e0;
+    }
+    
     .example-question {
         background-color: #f7f7f7;
         padding: 8px;
@@ -188,6 +203,88 @@ def custom_css():
         background-color: #4CAF50;
         border-radius: 4px;
     }
+
+
+    /* Streamlit 1.33.0 uses a container with class "stChatInput" */
+    div[data-testid="stChatInput"] {
+        position: fixed;
+        bottom: 0;
+        left: 320px; 
+        width: calc(100% - 320px); 
+        background-color: #f7f7f7;
+        padding: 0.75rem 1.5rem; 
+        border-top: 1px solid #e0e0e0; 
+        z-index: 999; 
+        box-shadow: 0px -2px 10px rgba(0,0,0,0.08);
+        box-sizing: border-box;
+    }
+
+    .main > .block-container {
+        padding-left: 1rem; /* Streamlit 默认 block-container 的左右 padding */
+        padding-right: 1rem; /* Streamlit 默认 block-container 的左右 padding */
+        padding-bottom: 100px !important; /* 根据输入框实际高度调整, 确保足够空间 */
+    }
+    
+    .chat-container { 
+        /* Ensure its height calculation considers the fixed input or adjust its bottom margin */
+        /* margin-bottom: 120px; /* Add margin to the chat message container itself */
+        /* The existing height: calc(100vh - 250px) might need to be adjusted if chat-container is the primary scroll area */
+    }
+
+    /* 历史对话记录样式 */
+    .chat-history-item {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 10px;
+        margin: 5px 0;
+        border-left: 3px solid #4b9bff;
+        transition: all 0.2s ease;
+    }
+    
+    .chat-history-item:hover {
+        background-color: #e9ecef;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .chat-history-title {
+        font-weight: bold;
+        color: #333;
+        font-size: 14px;
+        margin-bottom: 4px;
+    }
+    
+    .chat-history-meta {
+        font-size: 12px;
+        color: #666;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .chat-history-buttons {
+        display: flex;
+        gap: 5px;
+    }
+    
+    /* 保存对话按钮样式 */
+    .save-chat-btn {
+        background: linear-gradient(45deg, #4CAF50, #45a049);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .save-chat-btn:hover {
+        background: linear-gradient(45deg, #45a049, #4CAF50);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+    }
+
     </style>
     """, unsafe_allow_html=True)
 
@@ -245,5 +342,6 @@ KG_MANAGEMENT_CSS = """
     .kg-property-table th {
         background-color: #f5f5f5;
     }
+    /* REMOVED fixed chat input CSS from here */
 </style>
 """
